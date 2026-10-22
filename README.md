@@ -2,8 +2,25 @@
 
 CLI and foreground service for finding dependency directories, sharing identical files, and deleting dependencies belonging to inactive projects. Python 3.11+, no runtime dependencies.
 
+## Installation
+
+With Homebrew:
+
 ```sh
-python3 -m pip install -e .
+brew install brandonscript/tap/node-mash
+```
+
+Or install from a source checkout with Python 3.11+:
+
+```sh
+python3 -m pip install .
+```
+
+Installation does not start a service or perform cleanup. See the macOS service instructions below to configure scheduling.
+
+## Usage
+
+```sh
 node-mash scan ~/Dev
 node-mash dedupe ~/Dev                         # Preview only
 node-mash dedupe ~/Dev --apply                 # Independent copy-on-write clones
