@@ -4,13 +4,13 @@ CLI and foreground service for finding dependency directories, sharing identical
 
 ## Installation
 
-With Homebrew:
+**Homebrew is the recommended way to install Node mash on macOS:**
 
 ```sh
 brew install brandonscript/tap/node-mash
 ```
 
-Or install from a source checkout with Python 3.11+:
+For development or installation without Homebrew, use a source checkout with Python 3.11+:
 
 ```sh
 python3 -m pip install .
