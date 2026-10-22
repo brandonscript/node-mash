@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "node-mash"
+version = "0.1.0"
+description = "Content-based dependency deduplication and stale project cleanup"
+requires-python = ">=3.11"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.scripts]
+node-mash = "node_mash:main"
+
+[tool.setuptools]
+py-modules = ["node_mash"]
