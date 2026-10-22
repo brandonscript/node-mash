@@ -47,7 +47,7 @@ If migrating from a manually installed LaunchAgent, unload that job before start
 launchctl bootout "gui/$(id -u)/com.node-mash"
 ```
 
-Do not use that command unless the old job exists. Homebrew's service label is separate (`homebrew.mxcl.node-mash`). The formula does not automatically enable cleanup, register a service, or modify a pre-existing LaunchAgent.
+Do not use that command unless the old job exists. Homebrew manages a separate service label; use `brew services info node-mash` to inspect it. The formula does not automatically enable cleanup, register a service, or modify a pre-existing LaunchAgent.
 
 ## Foreground service
 
