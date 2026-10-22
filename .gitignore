@@ -18,3 +18,4 @@ provenance-workaround-test.json
 !.env.example
 *.pem
 *.key
+service.local.json

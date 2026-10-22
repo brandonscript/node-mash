@@ -1,0 +1,6 @@
+{
+  "roots": ["~/Dev"],
+  "days": 180,
+  "apply": false,
+  "purge": false
+}

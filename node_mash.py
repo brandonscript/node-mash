@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import errno
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -508,11 +509,39 @@ def scan(args):
                           for p in discover([Path(r).expanduser().absolute() for r in args.roots], store, reports)])
 
 
+def load_config(path):
+    config = json.loads(Path(path).expanduser().read_text())
+    if not isinstance(config, dict):
+        raise ValueError('Configuration must be a JSON object')
+    allowed = {'roots', 'days', 'method', 'report_dir', 'store', 'min_bytes', 'apply', 'purge'}
+    if set(config) - allowed:
+        raise ValueError('Unknown configuration keys: ' + ', '.join(sorted(set(config) - allowed)))
+    if 'roots' in config and (not isinstance(config['roots'], list) or not config['roots'] or
+                              any(not isinstance(r, str) or not r.strip() for r in config['roots'])):
+        raise ValueError('roots must be a nonempty array of directory paths')
+    for key in ['apply', 'purge']:
+        if key in config and type(config[key]) is not bool:
+            raise ValueError(f'{key} must be true or false')
+    for key in ['report_dir', 'store']:
+        if key in config and (not isinstance(config[key], str) or not config[key].strip()):
+            raise ValueError(f'{key} must be a nonempty path')
+    if 'method' in config and (not isinstance(config['method'], str) or config['method'] not in {'clone', 'hardlink', 'symlink'}):
+        raise ValueError('method must be clone, hardlink, or symlink')
+    if 'days' in config and (type(config['days']) not in {int, float} or
+                             not math.isfinite(config['days']) or config['days'] <= 0):
+        raise ValueError('days must be a positive finite number')
+    if 'min_bytes' in config and (type(config['min_bytes']) is not int or config['min_bytes'] < 0):
+        raise ValueError('min_bytes must be a nonnegative integer')
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['scan', 'dedupe', 'purge', 'service'])
-    parser.add_argument('roots', nargs='+')
+    parser.add_argument('roots', nargs='*', help='Directories to scan; may also be supplied by --config')
+    parser.add_argument('--config', help='JSON configuration file; explicit CLI options override it')
     parser.add_argument('--apply', action='store_true', help='Enable filesystem changes')
+    parser.add_argument('--dry-run', dest='apply', action='store_false', help='Force preview mode, overriding configuration')
     parser.add_argument('--days', type=float, default=180)
     parser.add_argument('--method', choices=['clone', 'hardlink', 'symlink'], default='clone')
     parser.add_argument('--report-dir', default='~/.local/state/node-mash/reports', help='Directory for per-run JSON reports and progress logs')
@@ -521,7 +550,17 @@ def main():
     parser.add_argument('--interval', type=float, default=86400, help='Service interval in seconds')
     parser.add_argument('--once', action='store_true', help='Run one service cycle and exit')
     parser.add_argument('--purge', action='store_true', help='Also enable age-based deletion in service mode')
+    config_parser = argparse.ArgumentParser(add_help=False)
+    config_parser.add_argument('--config')
+    preliminary, _ = config_parser.parse_known_args()
+    if preliminary.config:
+        try:
+            parser.set_defaults(**load_config(preliminary.config))
+        except (OSError, ValueError, TypeError) as error:
+            parser.error(f'Cannot load configuration: {error}')
     args = parser.parse_args()
+    if not args.roots:
+        parser.error('Specify at least one scan root or supply roots in --config')
     if args.days <= 0 or args.interval <= 0 or args.min_bytes < 0:
         parser.error('days and interval must be positive; min-bytes must be nonnegative')
     try:

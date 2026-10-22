@@ -321,6 +321,42 @@ class CleanupTests(unittest.TestCase):
         os.utime(self.source, (old, old))
         self.assertEqual(mash.activity(self.project, self.root / 'store', reports), old)
 
+    def test_service_config_supplies_roots_and_cli_overrides(self):
+        import json
+        config = self.root / 'service.json'
+        config.write_text(json.dumps({'roots': [str(self.root)], 'days': 90, 'apply': True, 'purge': True}))
+        with patch.object(sys, 'argv', ['node-mash', 'service', '--once', '--config', str(config), '--days', '180', '--dry-run']):
+            with patch.object(mash, 'run') as run:
+                mash.main()
+        args = run.call_args.args[0]
+        self.assertEqual(args.roots, [str(self.root)])
+        self.assertEqual(args.days, 180)
+        self.assertFalse(args.apply)
+        self.assertTrue(args.purge)
+        with patch.object(sys, 'argv', ['node-mash', 'service', str(self.project), '--once', '--config', str(config)]):
+            with patch.object(mash, 'run') as run:
+                mash.main()
+        self.assertEqual(run.call_args.args[0].roots, [str(self.project)])
+
+    def test_invalid_configs_rejected(self):
+        import json
+        config = self.root / 'service.json'
+        for payload in [{'roots': []}, {'apply': 'false'}, {'purge': 1}, {'days': -1},
+                        {'days': float('nan')}, {'report_dir': ''}, {'method': 'copy'},
+                        {'min_bytes': 0.5}, {'unexpected': True}, []]:
+            config.write_text(json.dumps(payload))
+            with self.subTest(payload=payload), self.assertRaises(ValueError):
+                mash.load_config(config)
+
+    def test_service_requires_roots_or_valid_config_before_work(self):
+        for extra in [[], ['--config', str(self.root / 'missing.json')]]:
+            with patch.object(sys, 'argv', ['node-mash', 'service', '--once', *extra]):
+                with patch.object(mash, 'run') as run, contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as error:
+                        mash.main()
+                    self.assertEqual(error.exception.code, 2)
+                    run.assert_not_called()
+
     def test_python_environment_discovery(self):
         env = self.project / '.venv'
         env.mkdir()
